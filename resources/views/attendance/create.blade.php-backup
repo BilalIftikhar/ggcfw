@@ -1,0 +1,203 @@
+@extends('layouts.app')
+
+@section('title', 'Create Attendance')
+
+@section('content')
+    <main id="main" class="main">
+        <div class="pagetitle">
+            <h1>Create Attendance</h1>
+            <nav>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('attendance.index') }}">Attendance</a></li>
+                    <li class="breadcrumb-item active">Create</li>
+                </ol>
+            </nav>
+        </div>
+
+        <section class="section">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Daily Attendance</h5>
+
+                    <!-- Attendance Filter Form -->
+                    <form method="POST" action="{{ route('attendance.daily.store') }}">
+                        @csrf
+
+                        <!-- Class Selection Partial -->
+                        <div class="row mt-3">
+                            <div class="col-md-3">
+                                <label>Academic Session</label>
+                                <select name="academic_session_id" id="academic_session_id" class="form-select" required>
+                                    <option value="">Select Academic Session</option>
+                                    @foreach($academicSessions as $session)
+                                        <option value="{{ $session->id }}" {{ old('academic_session_id', $selectedFilters['academic_session_id'] ?? '') == $session->id ? 'selected' : '' }}>
+                                            {{ $session->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label>Study Level</label>
+                                <select name="study_level_id" id="study_level_id" class="form-select" required {{ empty($studyLevels) ? 'disabled' : '' }}>
+                                    <option value="">Select Study Level</option>
+                                    @foreach($studyLevels as $level)
+                                        <option value="{{ $level->id }}" {{ old('study_level_id', $selectedFilters['study_level_id'] ?? '') == $level->id ? 'selected' : '' }}>
+                                            {{ $level->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label>Program</label>
+                                <select name="program_id" id="program_id" class="form-select" {{ empty($programs) ? 'disabled' : '' }} required>
+                                    <option value="">Select Program</option>
+                                    @foreach($programs as $program)
+                                        <option value="{{ $program->id }}" {{ old('program_id', $selectedFilters['program_id'] ?? '') == $program->id ? 'selected' : '' }}>
+                                            {{ $program->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label>Class</label>
+                                <select name="program_class_id" id="program_class_id" class="form-select" {{ empty($classes) ? 'disabled' : '' }} required>
+                                    <option value="">Select Class</option>
+                                    @foreach($classes as $cls)
+                                        <option value="{{ $cls->id }}" {{ old('program_class_id', $selectedFilters['program_class_id'] ?? '') == $cls->id ? 'selected' : '' }}>
+                                            {{ $cls->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Attendance Date -->
+                        <div class="row mt-3">
+                            <div class="col-md-4">
+                                <label>Attendance Date</label>
+                                <input type="date" name="attendance_date" class="form-control"
+                                       value="{{ old('attendance_date', isset($selectedDate) ? $selectedDate->format('Y-m-d') : now()->format('Y-m-d')) }}" required>
+                            </div>
+                            <div class="col-md-4 align-self-end">
+                                <button type="submit" class="btn btn-primary w-100">Process</button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Attendance Table -->
+                    @if(isset($selectedDate) && isset($students) && count($students))
+                        <h5 class="mt-5">Mark Attendance for {{ $selectedDate->format('j F Y') }}</h5>
+                        <table class="table table-bordered mt-3">
+                            <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach($students as $student)
+                                @php
+                                    $attendance = $attendanceRecords[$student->id] ?? null;
+                                    $dayKey = 'day_' . $selectedDate->day;
+                                    $status = $attendance?->$dayKey;
+                                @endphp
+                                <tr>
+                                    <td>{{ $student->name }}</td>
+                                    <td>
+                                        @foreach(['P' => 'Present', 'A' => 'Absent', 'L' => 'Late', 'H' => 'Holiday'] as $code => $label)
+                                            <label class="me-3">
+                                                <input type="radio"
+                                                       name="attendance_{{ $student->id }}"
+                                                       value="{{ $code }}"
+                                                       data-id="{{ $attendance?->id }}"
+                                                       data-day="{{ $selectedDate->day }}"
+                                                       class="attendance-radio"
+                                                    {{ $status === $code ? 'checked' : '' }}>
+                                                {{ $code }}
+                                            </label>
+                                        @endforeach
+                                    </td>
+                                </tr>
+                            @endforeach
+                            </tbody>
+                        </table>
+                    @elseif(isset($selectedDate))
+                        <p class="text-danger mt-4">No students found for this class.</p>
+                    @endif
+                </div>
+            </div>
+        </section>
+    </main>
+@endsection
+
+@section('scripts')
+    <script>
+        // Update attendance status via AJAX
+        $(document).on('change', '.attendance-radio', function () {
+            const attendanceId = $(this).data('id');
+            const day = $(this).data('day');
+            const status = $(this).val();
+
+            $.ajax({
+                url: "{{ route('attendance.daily.update') }}",
+                type: "POST",
+                data: {
+                    _token: "{{ csrf_token() }}",
+                    attendance_id: attendanceId,
+                    day: day,
+                    status: status
+                },
+                success: function (res) {
+                    toastr.success('Attendance updated successfully!');
+                    console.log('Updated:', res);
+                },
+                error: function () {
+                    toastr.error('Failed to update attendance.');
+                }
+            });
+        });
+
+        // Dependent dropdown logic
+        $(document).ready(function () {
+            $('#study_level_id, #program_id, #program_class_id').prop('disabled', true);
+
+            $('#academic_session_id').on('change', function () {
+                let sessionId = $(this).val();
+                $('#study_level_id, #program_id, #program_class_id').prop('disabled', true).empty().append('<option value="">Select...</option>');
+
+                if (!sessionId) return;
+
+                $.get(`/ajax-study-levels?academic_session_id=${sessionId}`, function (data) {
+                    $('#study_level_id').prop('disabled', false).append(data.map(lvl => `<option value="${lvl.id}">${lvl.name}</option>`));
+                });
+            });
+
+            $('#study_level_id').on('change', function () {
+                let levelId = $(this).val();
+                $('#program_id, #program_class_id').prop('disabled', true).empty().append('<option value="">Select...</option>');
+
+                if (!levelId) return;
+
+                $.get(`/ajax-programs?study_level_id=${levelId}`, function (data) {
+                    $('#program_id').prop('disabled', false).append(data.map(p => `<option value="${p.id}">${p.name}</option>`));
+                });
+            });
+
+            $('#program_id').on('change', function () {
+                let programId = $(this).val();
+                $('#program_class_id').prop('disabled', true).empty().append('<option value="">Select...</option>');
+
+                if (!programId) return;
+
+                $.get(`/program-classes?program_id=${programId}`, function (data) {
+                    $('#program_class_id').prop('disabled', false).append(data.map(c => `<option value="${c.id}">${c.name}</option>`));
+                });
+            });
+        });
+    </script>
+@endsection
+
