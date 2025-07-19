@@ -145,7 +145,9 @@
         public function run(): void
         {
             $programs = Program::with('classes')->get();
-            DB::table('courses')->truncate();
+            //DB::table('courses')->truncate();
+            DB::table('courses')->delete();
+            DB::statement('ALTER TABLE courses AUTO_INCREMENT = 1');
 
             foreach ($programs as $program) {
                 // Debug output to see all program names

@@ -13,20 +13,36 @@ return new class extends Migration
     {
         Schema::create('timetables', function (Blueprint $table) {
             $table->id();
+
             $table->foreignId('academic_session_id')->constrained()->onDelete('cascade');
             $table->foreignId('program_id')->constrained()->onDelete('cascade');
-            $table->foreignId('program_class_id')->constrained()->onDelete('cascade'); // semester or year
+            $table->foreignId('program_class_id')->constrained()->onDelete('cascade');
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
-            $table->foreignId('teacher_id')->constrained('employees')->onDelete('set null')->nullable();
+
+            $table->foreignId('teacher_id')
+                ->nullable()
+                ->constrained('employees')
+                ->onDelete('set null');
+
             $table->enum('day_of_week', ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
-//            $table->time('start_time');
-//            $table->time('end_time');
-//            $table->string('room_number')->nullable(); // optional
+
             $table->foreignId('time_slot_id')->constrained()->onDelete('cascade');
-            $table->foreignId('room_id')->constrained()->onDelete('set null')->nullable();
-            // Add created_by and updated_by foreign keys
-            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+
+            $table->foreignId('room_id')
+                ->nullable()
+                ->constrained()
+                ->onDelete('set null');
+
+            $table->foreignId('created_by')
+                ->nullable()
+                ->constrained('users')
+                ->onDelete('set null');
+
+            $table->foreignId('updated_by')
+                ->nullable()
+                ->constrained('users')
+                ->onDelete('set null');
+
             $table->softDeletes();
             $table->timestamps();
         });
